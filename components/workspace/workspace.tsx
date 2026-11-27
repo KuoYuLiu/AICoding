@@ -5,12 +5,14 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import type { AttemptView } from "@/lib/attempts/repository";
 import type { RunKind, RunView } from "@/lib/attempts/run";
 import type { EditSample } from "@/lib/attempts/edit-history";
+import type { ChatMessageView } from "@/lib/ai/chat-constants";
 import type { PublicProblem } from "@/lib/problems/public";
 import { AssistantPane } from "./assistant-pane";
 import { CodeEditor, type BlockedInput } from "./code-editor";
 import { OutputPane } from "./output-pane";
 import { ProblemPane } from "./problem-pane";
 import { useAutosave, type SaveStatus } from "./use-autosave";
+import { useChat } from "./use-chat";
 import { useRunner } from "./use-runner";
 
 export interface WorkspaceLanguage {
@@ -25,6 +27,7 @@ interface WorkspaceProps {
   attempt: AttemptView;
   language: WorkspaceLanguage;
   initialResults: { run: RunView | null; submit: RunView | null };
+  initialChat: ChatMessageView[];
 }
 
 function useMediaQuery(query: string): boolean | null {
@@ -46,7 +49,7 @@ const MOBILE_TABS = [
 ] as const;
 type MobileTab = (typeof MOBILE_TABS)[number]["id"];
 
-export function Workspace({ problem, attempt, language, initialResults }: WorkspaceProps) {
+export function Workspace({ problem, attempt, language, initialResults, initialChat }: WorkspaceProps) {
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const dark = useMediaQuery("(prefers-color-scheme: dark)") ?? false;
   const [mobileTab, setMobileTab] = useState<MobileTab>("code");
@@ -66,6 +69,14 @@ export function Workspace({ problem, attempt, language, initialResults }: Worksp
     [execute],
   );
   const runSamples = useCallback(() => startRun("run"), [startRun]);
+  const { state: chat, send, dismissError } = useChat(attempt.id, { messages: initialChat, stage: attempt.stage });
+  const askAboutError = useCallback(
+    (question: string) => {
+      setMobileTab("assistant");
+      void send(question);
+    },
+    [send],
+  );
 
   useEffect(() => {
     if (!toast) return;
@@ -116,7 +127,7 @@ export function Workspace({ problem, attempt, language, initialResults }: Worksp
       />
     </EditorPane>
   );
-  const assistantPane = <AssistantPane stage={attempt.stage} />;
+  const assistantPane = <AssistantPane chat={chat} disabled={readOnly} onSend={send} onDismissError={dismissError} />;
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -146,7 +157,7 @@ export function Workspace({ problem, attempt, language, initialResults }: Worksp
               <ResizeHandle orientation="horizontal" />
               <Panel defaultSize="32%" minSize={96}>
                 <Card>
-                  <OutputPane state={runner} tab={outputTab} onTabChange={setOutputTab} />
+                  <OutputPane state={runner} tab={outputTab} onTabChange={setOutputTab} onAskAboutError={readOnly ? undefined : askAboutError} />
                 </Card>
               </Panel>
             </Group>
@@ -181,7 +192,7 @@ export function Workspace({ problem, attempt, language, initialResults }: Worksp
           <div id="mobile-panel-code" role="tabpanel" hidden={mobileTab !== "code"} className="flex min-h-0 flex-1 flex-col gap-2 p-2">
             <Card className="min-h-0 flex-[2]">{editorPane}</Card>
             <Card className="min-h-0 flex-1">
-              <OutputPane state={runner} tab={outputTab} onTabChange={setOutputTab} />
+              <OutputPane state={runner} tab={outputTab} onTabChange={setOutputTab} onAskAboutError={readOnly ? undefined : askAboutError} />
             </Card>
           </div>
           <div id="mobile-panel-assistant" role="tabpanel" hidden={mobileTab !== "assistant"} className="min-h-0 flex-1 bg-white dark:bg-zinc-950">
