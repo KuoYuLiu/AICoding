@@ -50,7 +50,8 @@ AICoding 是給程式設計初學者的 AI 輔助學習平台。老師建立課�
 
 - 介面文字、AI 回覆、錯誤訊息給使用者看的部分用繁體中文；程式碼、識別字、commit 訊息用英文。
 - TypeScript `strict` 開啟，不使用 `any`。
-- 每個功能都附測試；改完執行 `npm run lint && npm run typecheck && npm test` 確認通過再提交。
+- 每個功能都附測試；改完執行 `npm run lint && npm run typecheck && npm test` 確認通過再提交。介面流程另附 Playwright 測試（`e2e/`）：需要 `DATABASE_URL` 與 `AUTH_SECRET`，先 `npm run seed -- --skip-verify` 與 `npm run build`，再 `npm run test:e2e`。
+- 介面設計：淺色與深色模式都要支援、桌面三欄與窄螢幕分頁都要能用；鍵盤可操作、有可見的焦點樣式。Monaco 自架在 `public/monaco`（安裝時由 `scripts/copy-monaco.mjs` 複製），不從 CDN 載入。
 - 一次只做一個小功能，一個 PR 對應一個 issue。
 - 機密（API key、OAuth secret、資料庫連線字串）只放在環境變數，`.env.example` 列出名稱但不放值。
 

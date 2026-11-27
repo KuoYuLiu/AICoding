@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Attempt" ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "EditEvent" ADD COLUMN     "kind" TEXT NOT NULL DEFAULT 'edit';

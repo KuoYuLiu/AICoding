@@ -9,23 +9,31 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && node scripts/copy-monaco.mjs",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",
+    "@monaco-editor/react": "^4.7.0",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "monaco-editor": "^0.55.1",
     "next": "16.4.6",
     "next-auth": "^5.0.0-beta.32",
     "pg": "^8.23.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^4.24.3",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/turbopack": "4.3.3",
+    "@tailwindcss/typography": "^0.5.20",
     "@types/node": "^22.20.7",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",

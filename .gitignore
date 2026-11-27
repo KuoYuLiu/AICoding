@@ -43,3 +43,11 @@ next-env.d.ts
 
 # prisma generated client
 /lib/generated/
+
+# self-hosted Monaco (copied on install)
+/public/monaco/
+
+# Playwright
+/test-results/
+/playwright-report/
+/e2e/.auth/

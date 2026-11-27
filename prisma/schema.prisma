@@ -80,6 +80,7 @@ model Attempt {
   code       String        @default("")
   stage      Int           @default(1) /// 目前引導階段 1–5
   startedAt  DateTime      @default(now())
+  updatedAt  DateTime      @default(now()) @updatedAt /// 最後一次自動儲存
   finishedAt DateTime?
   messages   ChatMessage[]
   editEvents EditEvent[]
@@ -109,7 +110,8 @@ model EditEvent {
   attempt       Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   insertedChars Int
   deletedChars  Int
-  flagged       Boolean  @default(false) /// 單次插入過多字元
+  kind          String   @default("edit") /// edit、undo、redo
+  flagged       Boolean  @default(false) /// 單次插入過多字元（undo/redo 不標記）
   createdAt     DateTime @default(now())
 
   @@index([attemptId, createdAt])
