@@ -18,6 +18,8 @@ interface CodeEditorProps {
   readOnly?: boolean;
   onChange: (code: string, edits: EditSample[]) => void;
   onBlockedInput: (kind: BlockedInput) => void;
+  /** Ctrl/Cmd + Enter. */
+  onRunShortcut?: () => void;
 }
 
 const OPTIONS: editor.IStandaloneEditorConstructionOptions = {
@@ -53,11 +55,11 @@ const OPTIONS: editor.IStandaloneEditorConstructionOptions = {
  * Monaco with paste, drop and the context menu disabled.
  * Every content change is reported with its inserted/deleted size for the edit history.
  */
-export function CodeEditor({ initialValue, language, dark, readOnly = false, onChange, onBlockedInput }: CodeEditorProps) {
+export function CodeEditor({ initialValue, language, dark, readOnly = false, onChange, onBlockedInput, onRunShortcut }: CodeEditorProps) {
   const cleanup = useRef<(() => void) | null>(null);
-  const callbacks = useRef({ initialValue, onChange, onBlockedInput });
+  const callbacks = useRef({ initialValue, onChange, onBlockedInput, onRunShortcut });
   useEffect(() => {
-    callbacks.current = { initialValue, onChange, onBlockedInput };
+    callbacks.current = { initialValue, onChange, onBlockedInput, onRunShortcut };
   });
   useEffect(() => () => cleanup.current?.(), []);
 
@@ -96,6 +98,8 @@ export function CodeEditor({ initialValue, language, dark, readOnly = false, onC
     instance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV, () =>
       callbacks.current.onBlockedInput("paste"),
     );
+
+    instance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => callbacks.current.onRunShortcut?.());
 
     // Last line of defence: if a paste slips through anyway, undo it.
     const pasteGuard = instance.onDidPaste(() => {

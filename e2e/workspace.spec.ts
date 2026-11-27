@@ -1,9 +1,10 @@
-import { withDb } from "./db";
+import { resetStudentAttempts, withDb } from "./db";
 import type { Page } from "@playwright/test";
 import { editorText, expect, focusEditor, test } from "./fixtures";
 import { E2E_STUDENT } from "./users";
 
 test.describe.configure({ mode: "serial" });
+test.beforeAll(() => resetStudentAttempts(E2E_STUDENT.id));
 
 /** Resolves when the next successful autosave request completes. */
 const waitForSave = (page: Page) =>

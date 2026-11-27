@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import type { AttemptView } from "@/lib/attempts/repository";
+import type { RunKind, RunView } from "@/lib/attempts/run";
 import type { EditSample } from "@/lib/attempts/edit-history";
 import type { PublicProblem } from "@/lib/problems/public";
 import { AssistantPane } from "./assistant-pane";
@@ -10,6 +11,7 @@ import { CodeEditor, type BlockedInput } from "./code-editor";
 import { OutputPane } from "./output-pane";
 import { ProblemPane } from "./problem-pane";
 import { useAutosave, type SaveStatus } from "./use-autosave";
+import { useRunner } from "./use-runner";
 
 export interface WorkspaceLanguage {
   name: string;
@@ -22,6 +24,7 @@ interface WorkspaceProps {
   problem: PublicProblem;
   attempt: AttemptView;
   language: WorkspaceLanguage;
+  initialResults: { run: RunView | null; submit: RunView | null };
 }
 
 function useMediaQuery(query: string): boolean | null {
@@ -43,7 +46,7 @@ const MOBILE_TABS = [
 ] as const;
 type MobileTab = (typeof MOBILE_TABS)[number]["id"];
 
-export function Workspace({ problem, attempt, language }: WorkspaceProps) {
+export function Workspace({ problem, attempt, language, initialResults }: WorkspaceProps) {
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const dark = useMediaQuery("(prefers-color-scheme: dark)") ?? false;
   const [mobileTab, setMobileTab] = useState<MobileTab>("code");
@@ -51,6 +54,18 @@ export function Workspace({ problem, attempt, language }: WorkspaceProps) {
   const latestCode = useRef(attempt.code);
   const { status, savedAt, record } = useAutosave(attempt.id, attempt.updatedAt);
   const readOnly = attempt.status !== "IN_PROGRESS" || status === "closed";
+  const { state: runner, execute } = useRunner(attempt.id, initialResults);
+  const [outputTab, setOutputTab] = useState<RunKind>(initialResults.submit && !initialResults.run ? "submit" : "run");
+
+  const startRun = useCallback(
+    (kind: RunKind) => {
+      setOutputTab(kind);
+      setMobileTab("code");
+      void execute(kind, latestCode.current);
+    },
+    [execute],
+  );
+  const runSamples = useCallback(() => startRun("run"), [startRun]);
 
   useEffect(() => {
     if (!toast) return;
@@ -81,7 +96,15 @@ export function Workspace({ problem, attempt, language }: WorkspaceProps) {
 
   const problemPane = <ProblemPane problem={problem} languageName={language.name} limits={language.limits} />;
   const editorPane = (
-    <EditorPane fileName={language.fileName} status={status} savedAt={savedAt}>
+    <EditorPane
+      fileName={language.fileName}
+      status={status}
+      savedAt={savedAt}
+      running={runner.running}
+      disabled={readOnly}
+      onRun={runSamples}
+      onSubmit={() => startRun("submit")}
+    >
       <CodeEditor
         initialValue={getLatestCode}
         language={language.editorMode}
@@ -89,6 +112,7 @@ export function Workspace({ problem, attempt, language }: WorkspaceProps) {
         readOnly={readOnly}
         onChange={handleChange}
         onBlockedInput={handleBlocked}
+        onRunShortcut={runSamples}
       />
     </EditorPane>
   );
@@ -122,7 +146,7 @@ export function Workspace({ problem, attempt, language }: WorkspaceProps) {
               <ResizeHandle orientation="horizontal" />
               <Panel defaultSize="32%" minSize={96}>
                 <Card>
-                  <OutputPane />
+                  <OutputPane state={runner} tab={outputTab} onTabChange={setOutputTab} />
                 </Card>
               </Panel>
             </Group>
@@ -157,7 +181,7 @@ export function Workspace({ problem, attempt, language }: WorkspaceProps) {
           <div id="mobile-panel-code" role="tabpanel" hidden={mobileTab !== "code"} className="flex min-h-0 flex-1 flex-col gap-2 p-2">
             <Card className="min-h-0 flex-[2]">{editorPane}</Card>
             <Card className="min-h-0 flex-1">
-              <OutputPane />
+              <OutputPane state={runner} tab={outputTab} onTabChange={setOutputTab} />
             </Card>
           </div>
           <div id="mobile-panel-assistant" role="tabpanel" hidden={mobileTab !== "assistant"} className="min-h-0 flex-1 bg-white dark:bg-zinc-950">
@@ -199,9 +223,20 @@ const STATUS_TEXT: Record<SaveStatus, string> = {
   closed: "作答已結束，無法修改",
 };
 
-function EditorPane({ fileName, status, savedAt, children }: { fileName: string; status: SaveStatus; savedAt: string; children: ReactNode }) {
+interface EditorPaneProps {
+  fileName: string;
+  status: SaveStatus;
+  savedAt: string;
+  running: RunKind | null;
+  disabled: boolean;
+  onRun: () => void;
+  onSubmit: () => void;
+  children: ReactNode;
+}
+
+function EditorPane({ fileName, status, savedAt, running, disabled, onRun, onSubmit, children }: EditorPaneProps) {
   const time = new Date(savedAt).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false });
-  const comingSoon = "下一版開放";
+  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
   return (
     <div className="flex h-full flex-col">
@@ -227,18 +262,22 @@ function EditorPane({ fileName, status, savedAt, children }: { fileName: string;
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            disabled
-            title={comingSoon}
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            onClick={onRun}
+            disabled={disabled || running !== null}
+            title={`用範例測資執行（${isMac ? "⌘" : "Ctrl"} + Enter）`}
+            className="flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
-            ▶ 執行
+            {running === "run" ? <span aria-hidden className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <span aria-hidden>▶</span>}
+            執行
           </button>
           <button
             type="button"
-            disabled
-            title={comingSoon}
-            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={onSubmit}
+            disabled={disabled || running !== null}
+            title="用隱藏測資測試"
+            className="flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
+            {running === "submit" && <span aria-hidden className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
             提交測試
           </button>
         </div>

@@ -11,6 +11,6 @@ export default async function globalSetup() {
     );
     await db.query(`DELETE FROM "Attempt" WHERE "userId" = $1`, [E2E_STUDENT.id]);
     const { rowCount } = await db.query(`SELECT 1 FROM "Problem" WHERE slug = 'sum-to-n'`);
-    if (!rowCount) throw new Error("Problem sum-to-n is missing: run `npm run seed -- --skip-verify` first");
+    if (!rowCount) throw new Error("Problem sum-to-n is missing: run `npm run seed` first");
   });
 }

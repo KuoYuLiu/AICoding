@@ -14,3 +14,8 @@ export async function withDb<T>(run: (client: Client) => Promise<T>): Promise<T>
     await client.end();
   }
 }
+
+/** Deletes the e2e student's attempts (and with them edit history and runs), so a spec starts from a blank editor. */
+export async function resetStudentAttempts(userId: string) {
+  await withDb((db) => db.query(`DELETE FROM "Attempt" WHERE "userId" = $1`, [userId]));
+}
