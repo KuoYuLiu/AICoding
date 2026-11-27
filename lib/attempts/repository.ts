@@ -58,6 +58,8 @@ export interface ProblemSummary {
   title: string;
   languageId: string;
   attemptStatus: AttemptStatus | null;
+  /** Only a published grade's total; null until the teacher publishes. */
+  publishedTotal: number | null;
 }
 
 export async function listProblemsForUser(userId: string): Promise<ProblemSummary[]> {
@@ -67,8 +69,17 @@ export async function listProblemsForUser(userId: string): Promise<ProblemSummar
       slug: true,
       title: true,
       languageId: true,
-      attempts: { where: { userId }, orderBy: { startedAt: "desc" }, take: 1, select: { status: true } },
+      attempts: {
+        where: { userId },
+        orderBy: { startedAt: "desc" },
+        take: 1,
+        select: { status: true, grades: { where: { status: "PUBLISHED" }, orderBy: { version: "desc" }, take: 1, select: { total: true } } },
+      },
     },
   });
-  return problems.map(({ attempts, ...problem }) => ({ ...problem, attemptStatus: attempts[0]?.status ?? null }));
+  return problems.map(({ attempts, ...problem }) => ({
+    ...problem,
+    attemptStatus: attempts[0]?.status ?? null,
+    publishedTotal: attempts[0]?.grades[0]?.total ?? null,
+  }));
 }
