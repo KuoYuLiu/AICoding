@@ -1,6 +1,9 @@
 import { auth } from "@/auth";
 import { respond } from "@/lib/ai/assistant";
 
+// A turn can include one rewrite of the reply.
+export const maxDuration = 60;
+
 /** Sends one student message to the AI assistant and returns its checked reply. */
 export async function POST(request: Request, context: RouteContext<"/api/attempts/[id]/chat">) {
   const session = await auth();

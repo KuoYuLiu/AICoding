@@ -3,6 +3,9 @@ import { auth } from "@/auth";
 import { gradeVersion } from "@/lib/ai/grader";
 import { finishAttempt } from "@/lib/attempts/finish";
 
+// AI grading runs after the response, within this function's time budget.
+export const maxDuration = 120;
+
 /** Ends the attempt and starts AI grading in the background. */
 export async function POST(_request: Request, context: RouteContext<"/api/attempts/[id]/finish">) {
   const session = await auth();

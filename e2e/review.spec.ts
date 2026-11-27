@@ -93,3 +93,18 @@ test("students cannot reach the review pages or actions", async ({ signedIn: stu
   const response = await student.request.post("/api/teacher/grades/anything", { data: { action: "publish" } });
   expect(response.status()).toBe(403);
 });
+
+test("the usage page shows cost and agreement after a published grade", async ({ signedIn: student, teacher }) => {
+  await solveAndFinish(student);
+  await openReview(teacher);
+  await teacher.getByRole("button", { name: "確認評分" }).click();
+  await teacher.getByRole("button", { name: "公佈成績給學生" }).click();
+  await expect(teacher.getByTestId("grade-status").first()).toHaveText("已公佈");
+
+  await teacher.getByRole("link", { name: "用量與一致率" }).click();
+  await expect(teacher.getByRole("heading", { level: 1, name: "用量與一致率" })).toBeVisible();
+  await expect(teacher.getByTestId("usage-row").filter({ hasText: "從 1 加到 n" })).toBeVisible();
+  await expect(teacher.getByTestId("total-cost")).toContainText("US$");
+  // Published without edits: the teacher agreed with every level.
+  await expect(teacher.getByTestId("exact-rate")).toHaveText("100%");
+});
