@@ -18,6 +18,20 @@ export function mapJudge0Status(statusId: number): RunStatus {
   return "internal_error";
 }
 
+/** Self-hosted Judge0 takes X-Auth-Token; the RapidAPI-hosted Judge0 CE wants its own key and host headers. */
+export function judge0Headers(baseUrl: string, apiKey?: string): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (!apiKey) return headers;
+  const host = new URL(baseUrl).host;
+  if (host.endsWith("rapidapi.com")) {
+    headers["X-RapidAPI-Key"] = apiKey;
+    headers["X-RapidAPI-Host"] = host;
+  } else {
+    headers["X-Auth-Token"] = apiKey;
+  }
+  return headers;
+}
+
 export class Judge0Runner implements CodeRunner {
   constructor(
     private readonly baseUrl: string,
@@ -25,8 +39,7 @@ export class Judge0Runner implements CodeRunner {
   ) {}
 
   async run({ language, sourceCode, stdin }: RunRequest): Promise<RunResult> {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (this.apiKey) headers["X-Auth-Token"] = this.apiKey;
+    const headers = judge0Headers(this.baseUrl, this.apiKey);
 
     const response = await fetch(`${this.baseUrl}/submissions?base64_encoded=false&wait=true`, {
       method: "POST",

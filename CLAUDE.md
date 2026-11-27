@@ -61,3 +61,5 @@ AICoding 是給程式設計初學者的 AI 輔助學習平台。老師建立課�
 - `docs/plan.md`：平台規劃（功能規格、架構、商品化評估、階段路線）
 - `prompts/assistant.md`：預設 AI 助理 prompt
 - `prompts/grader.md`：預設評量尺規與 AI 評分員 prompt
+- `docs/deployment.md`：部署、金鑰設定與試辦關卡
+- `docs/pilot-survey.md`：試辦回饋問卷
