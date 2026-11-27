@@ -36,13 +36,25 @@ async function HomeContent() {
       </header>
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
           <h1 className="text-2xl font-semibold tracking-tight">{isTeacher ? "題目總覽" : "我的作業"}</h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             {isTeacher
-              ? "你可以用學生視角預覽題目。作答審核功能會在後續版本加入。"
+              ? "你可以用學生視角預覽題目；學生結束作答後，到「審核作答」確認 AI 評分並公佈成績。"
               : "選一個題目開始。AI 助理會用提問引導你一步步想出解法。"}
           </p>
+          </div>
+          {isTeacher && (
+            <div className="flex gap-2">
+              <Link href="/teacher" className="rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500">
+                審核作答
+              </Link>
+              <Link href="/teacher/usage" className="rounded-lg border border-zinc-300 px-3.5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">
+                用量與一致率
+              </Link>
+            </div>
+          )}
         </div>
 
         {problems.length === 0 ? (
@@ -64,6 +76,11 @@ async function HomeContent() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="truncate font-medium">{problem.title}</h2>
                       <StatusBadge status={problem.attemptStatus} />
+                      {problem.publishedTotal !== null && (
+                        <span data-testid="published-total" className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                          成績 {problem.publishedTotal} 分
+                        </span>
+                      )}
                     </div>
                     <p className="mt-1 text-sm text-zinc-500">{getLanguage(problem.languageId).name}</p>
                   </div>
