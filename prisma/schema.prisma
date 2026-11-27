@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  TEACHER
+  STUDENT
+}
+
+/// 作答狀態：作答中、已完成（測資全過並結束作答）、未完成（截止時仍未通過）
+enum AttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  INCOMPLETE
+}
+
+/// 成績狀態：待評分 → AI 已評 → 教師已確認 → 已公佈
+enum GradeStatus {
+  PENDING
+  AI_GRADED
+  TEACHER_CONFIRMED
+  PUBLISHED
+}
+
+enum ChatRole {
+  STUDENT
+  ASSISTANT
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  image     String?
+  role      Role      @default(STUDENT)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  attempts  Attempt[]
+}
+
+model Problem {
+  id                String     @id @default(cuid())
+  slug              String     @unique
+  title             String
+  statement         String /// Markdown
+  languageId        String /// config/languages 的 id，例如 python-3
+  referenceSolution String /// 只存在伺服器端，不送前端也不送 AI 助理
+  variationHint     String? /// 學習反饋階段的變化題提示
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  testCases         TestCase[]
+  attempts          Attempt[]
+}
+
+model TestCase {
+  id             String  @id @default(cuid())
+  problemId      String
+  problem        Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  name           String
+  input          String
+  expectedOutput String
+  hidden         Boolean @default(false)
+  order          Int     @default(0)
+
+  @@unique([problemId, name])
+}
+
+model Attempt {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId  String
+  problem    Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  status     AttemptStatus @default(IN_PROGRESS)
+  code       String        @default("")
+  stage      Int           @default(1) /// 目前引導階段 1–5
+  startedAt  DateTime      @default(now())
+  finishedAt DateTime?
+  messages   ChatMessage[]
+  editEvents EditEvent[]
+  runs       RunRecord[]
+  grades     Grade[]
+
+  @@index([userId, problemId])
+}
+
+model ChatMessage {
+  id           String   @id @default(cuid())
+  attemptId    String
+  attempt      Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  role         ChatRole
+  content      String
+  stage        Int
+  inputTokens  Int?
+  outputTokens Int?
+  createdAt    DateTime @default(now())
+
+  @@index([attemptId, createdAt])
+}
+
+model EditEvent {
+  id            String   @id @default(cuid())
+  attemptId     String
+  attempt       Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  insertedChars Int
+  deletedChars  Int
+  flagged       Boolean  @default(false) /// 單次插入過多字元
+  createdAt     DateTime @default(now())
+
+  @@index([attemptId, createdAt])
+}
+
+model RunRecord {
+  id          String   @id @default(cuid())
+  attemptId   String
+  attempt     Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  kind        String /// run（範例測資）或 submit（隱藏測資）
+  code        String
+  passedCount Int
+  totalCount  Int
+  resultJson  Json
+  createdAt   DateTime @default(now())
+
+  @@index([attemptId, createdAt])
+}
+
+model Grade {
+  id         String          @id @default(cuid())
+  attemptId  String
+  attempt    Attempt         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  version    Int
+  status     GradeStatus     @default(PENDING)
+  resultJson Json? /// AI 評分員輸出（各面向等級、證據、回饋、信心、flags）
+  total      Float?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  auditLogs  GradeAuditLog[]
+
+  @@unique([attemptId, version])
+}
+
+/// 只新增、不修改的稽核紀錄
+model GradeAuditLog {
+  id         String   @id @default(cuid())
+  gradeId    String
+  grade      Grade    @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  actorEmail String /// 教師 Email，AI 評分時為 "ai-grader"
+  action     String /// ai_graded、edited、regrade_requested、confirmed、published
+  detailJson Json?
+  createdAt  DateTime @default(now())
+
+  @@index([gradeId, createdAt])
+}

@@ -12,8 +12,9 @@
 ## 開發
 
 ```bash
-npm install
+npm install                  # 會自動執行 prisma generate
 cp .env.example .env.local   # 填入 Judge0、Claude API、Google OAuth、資料庫設定
+npm run db:deploy            # 套用資料庫 migration
 npm run dev                  # http://localhost:3000
 ```
 
@@ -29,3 +30,5 @@ npm run lint && npm run typecheck && npm test
 - `lib/runner/`：程式執行介面（Judge0），學生程式碼只透過這裡執行
 - `lib/ai/`：AI 服務層與防止給答案的檢查
 - `config/languages/`：語言設定檔，新增語言只需新增一份
+- `auth.ts`、`lib/auth/`：Google 登入與角色（`TEACHER_EMAILS` 列出的 Email 為教師）
+- `prisma/`：資料庫結構與 migration；修改結構時執行 `npm run db:migrate`
