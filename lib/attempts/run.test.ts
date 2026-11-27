@@ -5,6 +5,8 @@ const db = vi.hoisted(() => ({
   attempt: { findUnique: vi.fn(), update: vi.fn() },
   runRecord: { findMany: vi.fn(), create: vi.fn() },
   testCase: { findMany: vi.fn() },
+  chatMessage: { create: vi.fn() },
+  $transaction: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ getDb: () => db }));
 
@@ -37,7 +39,9 @@ const now = new Date("2026-11-27T08:00:00Z");
 
 beforeEach(() => {
   vi.clearAllMocks();
-  db.attempt.findUnique.mockResolvedValue({ userId: "u1", status: "IN_PROGRESS", problem: { id: "p1", languageId: "python-3" } });
+  db.attempt.findUnique.mockResolvedValue({ userId: "u1", status: "IN_PROGRESS", stage: 3, problem: { id: "p1", languageId: "python-3" } });
+  db.chatMessage.create.mockResolvedValue({ id: "m1", createdAt: now });
+  db.$transaction.mockImplementation(async (operations: Promise<unknown>[]) => Promise.all(operations));
   db.attempt.update.mockResolvedValue({});
   db.runRecord.findMany.mockResolvedValue([]);
   db.runRecord.create.mockResolvedValue({ createdAt: now });
@@ -106,5 +110,27 @@ describe("toRunView", () => {
     }));
     const view = toRunView("run", stored, "python-3", now);
     expect(JSON.stringify(view)).not.toContain("SECRET");
+  });
+});
+
+describe("reflection stage", () => {
+  const allPass = () => db.testCase.findMany.mockResolvedValueOnce([hiddenCases[0]]);
+
+  it("opens stage 5 with the first reflection question when every hidden test passes", async () => {
+    allPass();
+    const outcome = await runAttempt("a1", "u1", "submit", "print(1)", runner, now);
+    if (!outcome.ok) throw new Error("expected ok");
+    expect(outcome.reflection?.content).toContain("第一個問題");
+    expect(db.attempt.update).toHaveBeenLastCalledWith({ where: { id: "a1" }, data: { stage: 5 } });
+    expect(db.chatMessage.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ role: "ASSISTANT", stage: 5 }) }));
+  });
+
+  it("does not repeat it, and never opens it from samples or a partial pass", async () => {
+    db.attempt.findUnique.mockResolvedValueOnce({ userId: "u1", status: "IN_PROGRESS", stage: 5, problem: { id: "p1", languageId: "python-3" } });
+    allPass();
+    expect(await runAttempt("a1", "u1", "submit", "print(1)", runner, now)).not.toHaveProperty("reflection");
+    expect(await runAttempt("a1", "u1", "run", "print(1)", runner, now)).not.toHaveProperty("reflection");
+    expect(await runAttempt("a1", "u1", "submit", "print(1)", runner, now)).not.toHaveProperty("reflection");
+    expect(db.chatMessage.create).not.toHaveBeenCalled();
   });
 });
