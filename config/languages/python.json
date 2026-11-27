@@ -4,6 +4,16 @@
   "editorMode": "python",
   "fileName": "main.py",
   "judge0LanguageId": 71,
-  "limits": { "timeSec": 5, "memoryMb": 128 },
+  "docker": {
+    "image": "python:3.12-slim",
+    "command": [
+      "python3",
+      "main.py"
+    ]
+  },
+  "limits": {
+    "timeSec": 5,
+    "memoryMb": 128
+  },
   "aiHints": "初學者常見錯誤：縮排、input() 讀到的是字串需要轉型、索引超出範圍、迴圈範圍差一。"
 }

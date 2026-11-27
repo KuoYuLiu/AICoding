@@ -6,6 +6,8 @@ export interface LanguageConfig {
   editorMode: string;
   fileName: string;
   judge0LanguageId: number;
+  /** Image and command for the dev-only DockerRunner. The command runs in the folder holding `fileName`. */
+  docker: { image: string; command: string[] };
   limits: { timeSec: number; memoryMb: number };
   aiHints: string;
 }
