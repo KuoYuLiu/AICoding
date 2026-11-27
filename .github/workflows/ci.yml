@@ -38,6 +38,9 @@ jobs:
       AUTH_GOOGLE_ID: e2e
       AUTH_GOOGLE_SECRET: e2e
       AUTH_TRUST_HOST: "true"
+      # Student code runs in local Docker containers on the CI machine (test-only opt-in for `next start`).
+      CODE_RUNNER: docker
+      CODE_RUNNER_ALLOW_DOCKER_IN_PRODUCTION: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,7 +49,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma migrate deploy
-      - run: npm run seed -- --skip-verify
+      - run: docker pull python:3.12-slim
+      - run: npm run seed
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

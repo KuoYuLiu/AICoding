@@ -1,4 +1,8 @@
+import { resetStudentAttempts } from "./db";
 import { expect, test } from "./fixtures";
+import { E2E_STUDENT } from "./users";
+
+test.beforeAll(() => resetStudentAttempts(E2E_STUDENT.id));
 
 test("narrow screens switch between problem, code and assistant tabs", async ({ signedIn: page }) => {
   await page.goto("/problems/sum-to-n");

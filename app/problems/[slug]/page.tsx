@@ -8,6 +8,7 @@ import { UserMenu } from "@/components/user-menu";
 import { Workspace } from "@/components/workspace/workspace";
 import { WorkspaceSkeleton } from "@/components/workspace/workspace-skeleton";
 import { getOrCreateAttempt } from "@/lib/attempts/repository";
+import { latestRunViews } from "@/lib/attempts/run";
 import { getLanguage } from "@/lib/languages";
 import { findProblemId, getPublicProblem } from "@/lib/problems/repository";
 
@@ -31,6 +32,7 @@ async function ProblemWorkspace({ params }: { params: Promise<{ slug: string }> 
 
   const attempt = await getOrCreateAttempt(session.user.id, problemId);
   const language = getLanguage(problem.languageId);
+  const initialResults = await latestRunViews(attempt.id, language.id);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
@@ -53,6 +55,7 @@ async function ProblemWorkspace({ params }: { params: Promise<{ slug: string }> 
         problem={problem}
         attempt={attempt}
         language={{ name: language.name, editorMode: language.editorMode, fileName: language.fileName, limits: language.limits }}
+        initialResults={initialResults}
       />
     </div>
   );

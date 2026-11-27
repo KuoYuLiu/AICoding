@@ -13,21 +13,29 @@ export function outputsMatch(actual: string, expected: string): boolean {
   return normalize(actual) === normalize(expected);
 }
 
+/** Runs every test case (a few at a time) and returns results in test-case order. */
 export async function runTestCases(
   runner: CodeRunner,
   language: LanguageConfig,
   sourceCode: string,
   testCases: TestCase[],
+  concurrency = 3,
 ): Promise<TestCaseResult[]> {
-  const results: TestCaseResult[] = [];
-  for (const testCase of testCases) {
-    const run = await runner.run({ language, sourceCode, stdin: testCase.input });
-    results.push({
-      name: testCase.name,
-      hidden: testCase.hidden,
-      passed: run.status === "ok" && outputsMatch(run.stdout, testCase.expectedOutput),
-      run,
-    });
-  }
+  const results: TestCaseResult[] = new Array(testCases.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < testCases.length) {
+      const index = next++;
+      const testCase = testCases[index];
+      const run = await runner.run({ language, sourceCode, stdin: testCase.input });
+      results[index] = {
+        name: testCase.name,
+        hidden: testCase.hidden,
+        passed: run.status === "ok" && outputsMatch(run.stdout, testCase.expectedOutput),
+        run,
+      };
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, testCases.length)) }, worker));
   return results;
 }

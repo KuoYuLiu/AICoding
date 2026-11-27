@@ -14,7 +14,8 @@ export function createRunner(env: NodeJS.ProcessEnv = process.env): CodeRunner {
   const kind = env.CODE_RUNNER ?? "judge0";
 
   if (kind === "docker") {
-    if (env.NODE_ENV === "production") {
+    // CODE_RUNNER_ALLOW_DOCKER_IN_PRODUCTION exists for CI end-to-end tests against `next start`, never for real deployments.
+    if (env.NODE_ENV === "production" && env.CODE_RUNNER_ALLOW_DOCKER_IN_PRODUCTION !== "true") {
       throw new Error("CODE_RUNNER=docker is for local development only; use Judge0 in production");
     }
     return new DockerRunner();

@@ -75,6 +75,9 @@ describe("createRunner", () => {
   it("allows the Docker runner only outside production", () => {
     expect(createRunner({ NODE_ENV: "development", CODE_RUNNER: "docker" })).toBeInstanceOf(DockerRunner);
     expect(() => createRunner({ NODE_ENV: "production", CODE_RUNNER: "docker" })).toThrow("development only");
+    expect(
+      createRunner({ NODE_ENV: "production", CODE_RUNNER: "docker", CODE_RUNNER_ALLOW_DOCKER_IN_PRODUCTION: "true" }),
+    ).toBeInstanceOf(DockerRunner);
     expect(() => createRunner({ NODE_ENV: "development", CODE_RUNNER: "other" })).toThrow("Unknown CODE_RUNNER");
   });
 });

@@ -35,7 +35,7 @@ AICoding 是給程式設計初學者的 AI 輔助學習平台。老師建立課�
 
 ## 架構規則
 
-- **學生程式碼永遠不在本專案的伺服器上執行。** 只能透過 `lib/runner` 送到 Judge0。`DockerRunner` 只供開發者在自己電腦上測試，`NODE_ENV=production` 時拒絕啟用。之後換成自架沙箱時，只改 `lib/runner`。
+- **學生程式碼永遠不在本專案的伺服器上執行。** 只能透過 `lib/runner` 送到 Judge0。`DockerRunner` 只供開發者在自己電腦上與 CI 測試，`NODE_ENV=production` 時拒絕啟用（唯一例外是 CI 端對端測試明確設定 `CODE_RUNNER_ALLOW_DOCKER_IN_PRODUCTION=true`，正式部署不得設定）。之後換成自架沙箱時，只改 `lib/runner`。
 - **語言由設定檔決定，不寫死。** 每種語言一份設定（Judge0 語言 id、開發用 Docker 映像與執行指令、檔名、時間與記憶體限制、給 AI 的常見錯誤提示），放在 `config/languages/`。
 - **題目放在 `problems/<slug>/`**（類 DOMjudge 結構：`problem.json`、`statement.md`、`data/sample`、`data/secret`、`submissions/accepted`）。`npm run seed` 先用參考解答跑過所有測資，全部通過才寫入資料庫。給前端的題目一律經過 `lib/problems/public.ts`，不含參考解答與隱藏測資。
 - **AI 助理與 AI 評分員是兩個獨立角色。** 助理只引導、不評分；評分員只讀完整作答紀錄、不和學生對話。兩者的 prompt 分別在 `prompts/assistant.md` 與 `prompts/grader.md`。
@@ -50,7 +50,8 @@ AICoding 是給程式設計初學者的 AI 輔助學習平台。老師建立課�
 
 - 介面文字、AI 回覆、錯誤訊息給使用者看的部分用繁體中文；程式碼、識別字、commit 訊息用英文。
 - TypeScript `strict` 開啟，不使用 `any`。
-- 每個功能都附測試；改完執行 `npm run lint && npm run typecheck && npm test` 確認通過再提交。介面流程另附 Playwright 測試（`e2e/`）：需要 `DATABASE_URL` 與 `AUTH_SECRET`，先 `npm run seed -- --skip-verify` 與 `npm run build`，再 `npm run test:e2e`。
+- 每個功能都附測試；改完執行 `npm run lint && npm run typecheck && npm test` 確認通過再提交。介面流程另附 Playwright 測試（`e2e/`）：需要 `DATABASE_URL` 與 `AUTH_SECRET`，先 `npm run seed` 與 `npm run build`，再 `npm run test:e2e`；執行與提交的測試另需 `CODE_RUNNER=docker`、`CODE_RUNNER_ALLOW_DOCKER_IN_PRODUCTION=true`。
+- **隱藏測資只回傳判定結果**：提交測試的回應只有每筆的判定（通過、答案錯誤…），不含輸入、輸出或錯誤訊息；完整結果存在 `RunRecord.resultJson` 供老師查看。錯誤說明放在 `lib/runner/explain/`，依語言提供初學者看得懂的中文說明，不給修正方式。
 - 介面設計：淺色與深色模式都要支援、桌面三欄與窄螢幕分頁都要能用；鍵盤可操作、有可見的焦點樣式。Monaco 自架在 `public/monaco`（安裝時由 `scripts/copy-monaco.mjs` 複製），不從 CDN 載入。
 - 一次只做一個小功能，一個 PR 對應一個 issue。
 - 機密（API key、OAuth secret、資料庫連線字串）只放在環境變數，`.env.example` 列出名稱但不放值。
