@@ -28,15 +28,15 @@ AICoding 是給程式設計初學者的 AI 輔助學習平台。老師建立課�
 | 前端 | Next.js App Router、React、Monaco Editor |
 | 登入 | Google OAuth（Auth.js） |
 | 資料庫 | PostgreSQL（託管），ORM 用 Prisma；之後加 pgvector |
-| 程式執行 | Judge0（階段 0 用託管 API），一律經過 `lib/runner` 執行介面 |
+| 程式執行 | Judge0（階段 0 用託管 API）；本機開發可用 Docker 執行器（`CODE_RUNNER=docker`）。一律經過 `lib/runner` 執行介面 |
 | AI | Claude API（Anthropic TypeScript SDK），一律經過 `lib/ai` 服務層 |
 | 測試 | Vitest（單元）、Playwright（端對端） |
 | CI | GitHub Actions：lint、型別檢查、測試 |
 
 ## 架構規則
 
-- **學生程式碼永遠不在本專案的伺服器上執行。** 只能透過 `lib/runner` 送到 Judge0。之後換成自架沙箱時，只改 `lib/runner`。
-- **語言由設定檔決定，不寫死。** 每種語言一份設定（Judge0 語言 id、檔名、時間與記憶體限制、給 AI 的常見錯誤提示），放在 `config/languages/`。
+- **學生程式碼永遠不在本專案的伺服器上執行。** 只能透過 `lib/runner` 送到 Judge0。`DockerRunner` 只供開發者在自己電腦上測試，`NODE_ENV=production` 時拒絕啟用。之後換成自架沙箱時，只改 `lib/runner`。
+- **語言由設定檔決定，不寫死。** 每種語言一份設定（Judge0 語言 id、開發用 Docker 映像與執行指令、檔名、時間與記憶體限制、給 AI 的常見錯誤提示），放在 `config/languages/`。
 - **AI 助理與 AI 評分員是兩個獨立角色。** 助理只引導、不評分；評分員只讀完整作答紀錄、不和學生對話。兩者的 prompt 分別在 `prompts/assistant.md` 與 `prompts/grader.md`。
 - **平台安全規則不可被老師的自訂 prompt 覆蓋。** 組 prompt 時，安全規則永遠放在最後並優先。
 - **送給 AI 的內容不得包含隱藏測資、參考解答或學生個資（姓名、學號、Email）。**
