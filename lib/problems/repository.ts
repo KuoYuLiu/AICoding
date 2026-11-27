@@ -19,3 +19,8 @@ export async function getPublicProblem(slug: string): Promise<PublicProblem | nu
   });
   return problem ? toPublicProblem(problem) : null;
 }
+
+export async function findProblemId(slug: string): Promise<string | null> {
+  const problem = await getDb().problem.findUnique({ where: { slug }, select: { id: true } });
+  return problem?.id ?? null;
+}

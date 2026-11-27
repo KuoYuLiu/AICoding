@@ -13,6 +13,9 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "lib/generated/**",
+    "public/monaco/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 
