@@ -50,7 +50,7 @@ AICoding 是給程式設計初學者的 AI 輔助學習平台。老師建立課�
 
 - 介面文字、AI 回覆、錯誤訊息給使用者看的部分用繁體中文；程式碼、識別字、commit 訊息用英文。
 - TypeScript `strict` 開啟，不使用 `any`。
-- 每個功能都附測試；改完執行 `npm run lint && npm run typecheck && npm test` 確認通過再提交。介面流程另附 Playwright 測試（`e2e/`）：需要 `DATABASE_URL` 與 `AUTH_SECRET`，先 `npm run seed` 與 `npm run build`，再 `npm run test:e2e`；執行與提交的測試另需 `CODE_RUNNER=docker`、`CODE_RUNNER_ALLOW_DOCKER_IN_PRODUCTION=true`。
+- 每個功能都附測試；改完執行 `npm run lint && npm run typecheck && npm test` 確認通過再提交。介面流程另附 Playwright 測試（`e2e/`）：需要 `DATABASE_URL` 與 `AUTH_SECRET`，先 `npm run seed` 與 `npm run build`，再 `npm run test:e2e`；執行與提交的測試另需 `CODE_RUNNER=docker`、`CODE_RUNNER_ALLOW_DOCKER_IN_PRODUCTION=true`。端對端測試一律用 `AI_PROVIDER=fake`（固定回覆，不呼叫 Claude API）。改了 AI 助理的 prompt 或檢查時，用 `npx tsx scripts/red-team.ts > docs/red-team.md` 以真的 API 重跑紅隊測試。
 - **隱藏測資只回傳判定結果**：提交測試的回應只有每筆的判定（通過、答案錯誤…），不含輸入、輸出或錯誤訊息；完整結果存在 `RunRecord.resultJson` 供老師查看。錯誤說明放在 `lib/runner/explain/`，依語言提供初學者看得懂的中文說明，不給修正方式。
 - 介面設計：淺色與深色模式都要支援、桌面三欄與窄螢幕分頁都要能用；鍵盤可操作、有可見的焦點樣式。Monaco 自架在 `public/monaco`（安裝時由 `scripts/copy-monaco.mjs` 複製），不從 CDN 載入。
 - 一次只做一個小功能，一個 PR 對應一個 issue。

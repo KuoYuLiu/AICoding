@@ -28,9 +28,11 @@ interface OutputPaneProps {
   state: RunnerState;
   tab: RunKind;
   onTabChange: (tab: RunKind) => void;
+  /** Asks the AI assistant about one failing sample. Hidden tests never offer this. */
+  onAskAboutError?: (question: string) => void;
 }
 
-export function OutputPane({ state, tab, onTabChange }: OutputPaneProps) {
+export function OutputPane({ state, tab, onTabChange, onAskAboutError }: OutputPaneProps) {
   const active = TABS.find((item) => item.id === tab) ?? TABS[0];
   const view = state[tab];
   const error = state.error?.kind === tab ? state.error.message : null;
@@ -83,7 +85,7 @@ export function OutputPane({ state, tab, onTabChange }: OutputPaneProps) {
             <p className="max-w-72 text-center text-xs leading-relaxed text-zinc-500">{active.empty}</p>
           </div>
         ) : view.kind === "run" ? (
-          <RunResult cases={view.cases} passed={view.passed} total={view.total} />
+          <RunResult cases={view.cases} passed={view.passed} total={view.total} onAsk={onAskAboutError} />
         ) : (
           <SubmitResult cases={view.cases} passed={view.passed} total={view.total} />
         )}
@@ -109,7 +111,17 @@ function VerdictBadge({ verdict }: { verdict: Verdict }) {
   return <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${TONE[style.tone]}`}>{style.label}</span>;
 }
 
-function RunResult({ cases, passed, total }: { cases: SampleCaseView[]; passed: number; total: number }) {
+function RunResult({
+  cases,
+  passed,
+  total,
+  onAsk,
+}: {
+  cases: SampleCaseView[];
+  passed: number;
+  total: number;
+  onAsk?: (question: string) => void;
+}) {
   return (
     <div className="space-y-3 p-3">
       <Summary label="範例測資" passed={passed} total={total} />
@@ -131,7 +143,11 @@ function RunResult({ cases, passed, total }: { cases: SampleCaseView[]; passed: 
                   {item.explanation.line !== null && <span className="ml-1 font-normal">（第 {item.explanation.line} 行）</span>}
                 </p>
                 <p className="mt-0.5 text-amber-900/80 dark:text-amber-100/80">{item.explanation.detail}</p>
+                {onAsk && <AskButton onClick={() => onAsk(errorQuestion(index + 1, item))} />}
               </div>
+            )}
+            {!item.explanation && item.verdict === "wrong_answer" && onAsk && (
+              <AskButton label="請 AI 助理陪我找原因" onClick={() => onAsk(errorQuestion(index + 1, item))} />
             )}
             <div className="grid gap-2 sm:grid-cols-3">
               <IoBlock label="輸入" value={item.input} />
@@ -148,6 +164,28 @@ function RunResult({ cases, passed, total }: { cases: SampleCaseView[]; passed: 
         </details>
       ))}
     </div>
+  );
+}
+
+/** The question sent for a failing sample. It holds only what the student can already see. */
+export function errorQuestion(sample: number, item: SampleCaseView): string {
+  if (item.explanation) {
+    const where = item.explanation.line !== null ? `第 ${item.explanation.line} 行` : "程式裡";
+    return `我的程式在範例 ${sample} 出現「${item.explanation.title}」，位置在${where}。我看不太懂這個錯誤，可以陪我想想看嗎？`;
+  }
+  return `範例 ${sample} 的輸入是 ${item.input.trim()}，預期輸出 ${item.expectedOutput.trim()}，但我的程式輸出 ${item.stdout.trim() || "（沒有輸出）"}。可以陪我找找看哪裡不對嗎？`;
+}
+
+function AskButton({ onClick, label = "請 AI 助理解釋這個錯誤" }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 dark:border-indigo-500/40 dark:bg-transparent dark:text-indigo-300 dark:hover:bg-indigo-500/10"
+    >
+      <span aria-hidden>💬</span>
+      {label}
+    </button>
   );
 }
 

@@ -27,6 +27,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    env: { AUTH_TRUST_HOST: "true" },
+    // The fake AI gives fixed replies, so e2e never calls the Claude API.
+    env: { AUTH_TRUST_HOST: "true", AI_PROVIDER: "fake" },
   },
 });

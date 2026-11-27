@@ -1,8 +1,8 @@
 import { resetStudentAttempts } from "./db";
-import { expect, test } from "./fixtures";
+import { expect, focusEditor, test } from "./fixtures";
 import { E2E_STUDENT } from "./users";
 
-test.beforeAll(() => resetStudentAttempts(E2E_STUDENT.id));
+test.beforeEach(() => resetStudentAttempts(E2E_STUDENT.id));
 
 test("narrow screens switch between problem, code and assistant tabs", async ({ signedIn: page }) => {
   await page.goto("/problems/sum-to-n");
@@ -16,4 +16,17 @@ test("narrow screens switch between problem, code and assistant tabs", async ({ 
 
   await tabs.getByRole("tab", { name: "AI 助理" }).click();
   await expect(page.getByRole("heading", { name: "AI 助理" })).toBeVisible();
+});
+
+test("asking about an error on a phone opens the assistant tab", async ({ signedIn: page }) => {
+  await page.goto("/problems/sum-to-n");
+  await focusEditor(page);
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.type("print(1 / 0)");
+  await page.getByRole("button", { name: "執行" }).click();
+
+  await page.getByRole("button", { name: "請 AI 助理解釋這個錯誤" }).first().click({ timeout: 30_000 });
+  await expect(page.getByRole("tab", { name: "AI 助理" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("chat-assistant").last()).toContainText("我們一起看看這個錯誤", { timeout: 15_000 });
 });

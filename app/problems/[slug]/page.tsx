@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { listChat } from "@/lib/ai/assistant";
 import { Brand } from "@/components/brand";
 import { UserMenu } from "@/components/user-menu";
 import { Workspace } from "@/components/workspace/workspace";
@@ -32,7 +33,7 @@ async function ProblemWorkspace({ params }: { params: Promise<{ slug: string }> 
 
   const attempt = await getOrCreateAttempt(session.user.id, problemId);
   const language = getLanguage(problem.languageId);
-  const initialResults = await latestRunViews(attempt.id, language.id);
+  const [initialResults, initialChat] = await Promise.all([latestRunViews(attempt.id, language.id), listChat(attempt.id)]);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
@@ -56,6 +57,7 @@ async function ProblemWorkspace({ params }: { params: Promise<{ slug: string }> 
         attempt={attempt}
         language={{ name: language.name, editorMode: language.editorMode, fileName: language.fileName, limits: language.limits }}
         initialResults={initialResults}
+        initialChat={initialChat}
       />
     </div>
   );

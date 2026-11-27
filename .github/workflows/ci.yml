@@ -41,6 +41,8 @@ jobs:
       # Student code runs in local Docker containers on the CI machine (test-only opt-in for `next start`).
       CODE_RUNNER: docker
       CODE_RUNNER_ALLOW_DOCKER_IN_PRODUCTION: "true"
+      # Fixed AI replies: no API key in CI.
+      AI_PROVIDER: fake
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
