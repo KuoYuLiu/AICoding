@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import type { ChatMessageView } from "@/lib/ai/chat-constants";
 import type { RunKind, RunView } from "@/lib/attempts/run";
 
 export interface RunnerState {
@@ -10,7 +11,12 @@ export interface RunnerState {
   error: { kind: RunKind; message: string } | null;
 }
 
-export function useRunner(attemptId: string, initial: { run: RunView | null; submit: RunView | null }) {
+export function useRunner(
+  attemptId: string,
+  initial: { run: RunView | null; submit: RunView | null },
+  /** Called when a submission passes everything and the assistant opens the reflection stage. */
+  onReflection?: (message: ChatMessageView) => void,
+) {
   const [state, setState] = useState<RunnerState>({ ...initial, running: null, error: null });
   const busy = useRef(false);
 
@@ -27,20 +33,22 @@ export function useRunner(attemptId: string, initial: { run: RunView | null; sub
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code }),
         });
-        const data = (await response.json().catch(() => ({}))) as RunView | { error?: string };
+        const data = (await response.json().catch(() => ({}))) as (RunView & { reflection?: ChatMessageView }) | { error?: string };
         if (!response.ok || !("kind" in data)) {
           const message = "error" in data && data.error ? data.error : "執行失敗，請稍後再試。";
           setState((current) => ({ ...current, running: null, error: { kind, message } }));
           return;
         }
-        setState((current) => ({ ...current, [kind]: data, running: null, error: null }));
+        const { reflection, ...view } = data;
+        setState((current) => ({ ...current, [kind]: view as RunView, running: null, error: null }));
+        if (reflection) onReflection?.(reflection);
       } catch {
         setState((current) => ({ ...current, running: null, error: { kind, message: "連線中斷，請檢查網路後再試一次。" } }));
       } finally {
         busy.current = false;
       }
     },
-    [attemptId],
+    [attemptId, onReflection],
   );
 
   return { state, execute };

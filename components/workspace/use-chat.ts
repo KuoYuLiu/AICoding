@@ -64,7 +64,14 @@ export function useChat(attemptId: string, initial: { messages: ChatMessageView[
     [attemptId],
   );
 
+  /** Adds a message the server created on its own (the reflection opener). */
+  const append = useCallback((message: ChatMessageView, stage: number) => {
+    setState((current) =>
+      current.messages.some((item) => item.id === message.id) ? current : { ...current, messages: [...current.messages, message], stage },
+    );
+  }, []);
+
   const dismissError = useCallback(() => setState((current) => ({ ...current, error: null })), []);
 
-  return { state, send, dismissError };
+  return { state, send, append, dismissError };
 }

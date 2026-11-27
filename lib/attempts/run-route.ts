@@ -19,7 +19,7 @@ export async function handleRunRequest(request: Request, attemptId: string, kind
   }
 
   const outcome = await runAttempt(attemptId, session.user.id, kind, code);
-  if (outcome.ok) return Response.json(outcome.view);
+  if (outcome.ok) return Response.json(outcome.reflection ? { ...outcome.view, reflection: outcome.reflection } : outcome.view);
 
   switch (outcome.reason) {
     case "rate_limited":

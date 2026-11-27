@@ -9,6 +9,7 @@ import { UserMenu } from "@/components/user-menu";
 import { Workspace } from "@/components/workspace/workspace";
 import { WorkspaceSkeleton } from "@/components/workspace/workspace-skeleton";
 import { getOrCreateAttempt } from "@/lib/attempts/repository";
+import { getPublishedGrade } from "@/lib/grading/student";
 import { latestRunViews } from "@/lib/attempts/run";
 import { getLanguage } from "@/lib/languages";
 import { findProblemId, getPublicProblem } from "@/lib/problems/repository";
@@ -33,7 +34,11 @@ async function ProblemWorkspace({ params }: { params: Promise<{ slug: string }> 
 
   const attempt = await getOrCreateAttempt(session.user.id, problemId);
   const language = getLanguage(problem.languageId);
-  const [initialResults, initialChat] = await Promise.all([latestRunViews(attempt.id, language.id), listChat(attempt.id)]);
+  const [initialResults, initialChat, grade] = await Promise.all([
+    latestRunViews(attempt.id, language.id),
+    listChat(attempt.id),
+    attempt.status === "IN_PROGRESS" ? null : getPublishedGrade(attempt.id),
+  ]);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
@@ -58,6 +63,7 @@ async function ProblemWorkspace({ params }: { params: Promise<{ slug: string }> 
         language={{ name: language.name, editorMode: language.editorMode, fileName: language.fileName, limits: language.limits }}
         initialResults={initialResults}
         initialChat={initialChat}
+        grade={grade}
       />
     </div>
   );

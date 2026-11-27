@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { GREETING, MAX_MESSAGE_CHARS as MAX_CHARS, type ChatMessageView } from "@/lib/ai/chat-constants";
@@ -14,9 +14,13 @@ interface AssistantPaneProps {
   disabled: boolean;
   onSend: (message: string) => Promise<boolean>;
   onDismissError: () => void;
+  /** Opens the finish dialog. Left out once the attempt has ended. */
+  onFinish?: () => void;
+  /** Shown in place of the message box once the attempt has ended. */
+  closedNotice?: ReactNode;
 }
 
-export function AssistantPane({ chat, disabled, onSend, onDismissError }: AssistantPaneProps) {
+export function AssistantPane({ chat, disabled, onSend, onDismissError, onFinish, closedNotice }: AssistantPaneProps) {
   const current = STAGES.find((item) => item.id === chat.stage) ?? STAGES[0];
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
@@ -77,9 +81,20 @@ export function AssistantPane({ chat, disabled, onSend, onDismissError }: Assist
             </span>
             AI 助理
           </h2>
-          <span className="text-xs text-zinc-500" data-testid="stage-label">
-            階段 {current.id} / {STAGES.length}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-zinc-500" data-testid="stage-label">
+              階段 {current.id} / {STAGES.length}
+            </span>
+            {onFinish && chat.stage < 5 && (
+              <button
+                type="button"
+                onClick={onFinish}
+                className="rounded-md px-2 py-1 text-xs font-medium text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+              >
+                結束作答
+              </button>
+            )}
+          </div>
         </div>
         <ol className="mt-3 flex gap-1" aria-label="解題階段">
           {STAGES.map((item) => (
@@ -127,6 +142,24 @@ export function AssistantPane({ chat, disabled, onSend, onDismissError }: Assist
         )}
       </div>
 
+      {onFinish && chat.stage >= 5 && (
+        <div
+          data-testid="reflection-banner"
+          className="mx-3 mb-2 flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm dark:border-emerald-500/30 dark:bg-emerald-500/10"
+        >
+          <p className="flex-1 text-emerald-900 dark:text-emerald-100">
+            <span className="font-medium">測資全部通過！</span>回答完 AI 的回顧問題後，就可以結束作答。
+          </p>
+          <button
+            type="button"
+            onClick={onFinish}
+            className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-500"
+          >
+            結束作答
+          </button>
+        </div>
+      )}
+
       {chat.error && (
         <div
           role="alert"
@@ -139,6 +172,9 @@ export function AssistantPane({ chat, disabled, onSend, onDismissError }: Assist
         </div>
       )}
 
+      {closedNotice ? (
+        <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">{closedNotice}</div>
+      ) : (
       <form
         className="border-t border-zinc-200 p-3 dark:border-zinc-800"
         onSubmit={(event) => {
@@ -188,6 +224,7 @@ export function AssistantPane({ chat, disabled, onSend, onDismissError }: Assist
           )}
         </p>
       </form>
+      )}
     </div>
   );
 }

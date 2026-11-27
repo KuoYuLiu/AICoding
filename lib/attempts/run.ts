@@ -3,6 +3,7 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import { getLanguage } from "@/lib/languages";
 import { createRunner, runTestCases, type CodeRunner, type RunStatus, type TestCaseResult } from "@/lib/runner";
 import { explainRunError, type ErrorExplanation } from "@/lib/runner/explain";
+import { REFLECTION_OPENER, type ChatMessageView } from "@/lib/ai/chat-constants";
 import { MAX_CODE_CHARS } from "./edit-history";
 
 export type RunKind = "run" | "submit";
@@ -39,7 +40,7 @@ export type RunView =
   | { kind: "run"; passed: number; total: number; createdAt: string; cases: SampleCaseView[] }
   | { kind: "submit"; passed: number; total: number; createdAt: string; cases: HiddenCaseView[] };
 
-interface StoredCase {
+export interface StoredCase {
   name: string;
   hidden: boolean;
   passed: boolean;
@@ -75,7 +76,8 @@ export function toRunView(kind: RunKind, stored: StoredCase[], languageId: strin
 }
 
 export type RunOutcome =
-  | { ok: true; view: RunView }
+  /** reflection: set when this submission passed every hidden test for the first time and the AI opened the reflection stage. */
+  | { ok: true; view: RunView; reflection?: ChatMessageView }
   | { ok: false; reason: "not_found" | "closed" | "too_long" }
   | { ok: false; reason: "rate_limited"; retryAfterSec: number };
 
@@ -91,7 +93,7 @@ export async function runAttempt(
   const db = getDb();
   const attempt = await db.attempt.findUnique({
     where: { id: attemptId },
-    select: { userId: true, status: true, problem: { select: { languageId: true, id: true } } },
+    select: { userId: true, status: true, stage: true, problem: { select: { languageId: true, id: true } } },
   });
   if (!attempt || attempt.userId !== userId) return { ok: false, reason: "not_found" };
   if (attempt.status !== "IN_PROGRESS") return { ok: false, reason: "closed" };
@@ -139,7 +141,24 @@ export async function runAttempt(
     },
     select: { createdAt: true },
   });
-  return { ok: true, view: toRunView(kind, stored, language.id, record.createdAt) };
+  const view = toRunView(kind, stored, language.id, record.createdAt);
+
+  // All hidden tests pass: the assistant opens stage 5 (learning reflection) with its first question.
+  if (kind === "submit" && view.total > 0 && view.passed === view.total && attempt.stage < 5) {
+    const [message] = await db.$transaction([
+      db.chatMessage.create({
+        data: { attemptId, role: "ASSISTANT", content: REFLECTION_OPENER, stage: 5 },
+        select: { id: true, createdAt: true },
+      }),
+      db.attempt.update({ where: { id: attemptId }, data: { stage: 5 } }),
+    ]);
+    return {
+      ok: true,
+      view,
+      reflection: { id: message.id, role: "assistant", content: REFLECTION_OPENER, createdAt: message.createdAt.toISOString() },
+    };
+  }
+  return { ok: true, view };
 }
 
 /** The latest run and submission of an attempt, for restoring the result panel on page load. */

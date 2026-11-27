@@ -3,8 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
-  // The chat route reads the assistant prompt from prompts/ at run time.
-  outputFileTracingIncludes: { "/api/attempts/*/chat": ["./prompts/**/*.md"] },
+  // The AI assistant and grader read their prompts from prompts/ at run time.
+  outputFileTracingIncludes: { "/api/**/*": ["./prompts/**/*.md"], "/teacher/**/*": ["./prompts/**/*.md"] },
   turbopack: {
     rules: {
       "*.css": {

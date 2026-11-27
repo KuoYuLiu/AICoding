@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import type { AttemptView } from "@/lib/attempts/repository";
@@ -7,8 +8,11 @@ import type { RunKind, RunView } from "@/lib/attempts/run";
 import type { EditSample } from "@/lib/attempts/edit-history";
 import type { ChatMessageView } from "@/lib/ai/chat-constants";
 import type { PublicProblem } from "@/lib/problems/public";
+import type { PublishedGradeView } from "@/lib/grading/student";
 import { AssistantPane } from "./assistant-pane";
+import { ClosedNotice } from "./closed-notice";
 import { CodeEditor, type BlockedInput } from "./code-editor";
+import { FinishDialog } from "./finish-dialog";
 import { OutputPane } from "./output-pane";
 import { ProblemPane } from "./problem-pane";
 import { useAutosave, type SaveStatus } from "./use-autosave";
@@ -28,6 +32,8 @@ interface WorkspaceProps {
   language: WorkspaceLanguage;
   initialResults: { run: RunView | null; submit: RunView | null };
   initialChat: ChatMessageView[];
+  /** The published grade, if any. Unpublished grades never reach the student's browser. */
+  grade: PublishedGradeView | null;
 }
 
 function useMediaQuery(query: string): boolean | null {
@@ -49,7 +55,7 @@ const MOBILE_TABS = [
 ] as const;
 type MobileTab = (typeof MOBILE_TABS)[number]["id"];
 
-export function Workspace({ problem, attempt, language, initialResults, initialChat }: WorkspaceProps) {
+export function Workspace({ problem, attempt, language, initialResults, initialChat, grade }: WorkspaceProps) {
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const dark = useMediaQuery("(prefers-color-scheme: dark)") ?? false;
   const [mobileTab, setMobileTab] = useState<MobileTab>("code");
@@ -57,7 +63,17 @@ export function Workspace({ problem, attempt, language, initialResults, initialC
   const latestCode = useRef(attempt.code);
   const { status, savedAt, record } = useAutosave(attempt.id, attempt.updatedAt);
   const readOnly = attempt.status !== "IN_PROGRESS" || status === "closed";
-  const { state: runner, execute } = useRunner(attempt.id, initialResults);
+  const router = useRouter();
+  const [finishOpen, setFinishOpen] = useState(false);
+  const { state: chat, send, append, dismissError } = useChat(attempt.id, { messages: initialChat, stage: attempt.stage });
+  const openReflection = useCallback(
+    (message: ChatMessageView) => {
+      append(message, 5);
+      setMobileTab("assistant");
+    },
+    [append],
+  );
+  const { state: runner, execute } = useRunner(attempt.id, initialResults, openReflection);
   const [outputTab, setOutputTab] = useState<RunKind>(initialResults.submit && !initialResults.run ? "submit" : "run");
 
   const startRun = useCallback(
@@ -69,7 +85,6 @@ export function Workspace({ problem, attempt, language, initialResults, initialC
     [execute],
   );
   const runSamples = useCallback(() => startRun("run"), [startRun]);
-  const { state: chat, send, dismissError } = useChat(attempt.id, { messages: initialChat, stage: attempt.stage });
   const askAboutError = useCallback(
     (question: string) => {
       setMobileTab("assistant");
@@ -127,10 +142,30 @@ export function Workspace({ problem, attempt, language, initialResults, initialC
       />
     </EditorPane>
   );
-  const assistantPane = <AssistantPane chat={chat} disabled={readOnly} onSend={send} onDismissError={dismissError} />;
+  const passedAll = Boolean(runner.submit && runner.submit.total > 0 && runner.submit.passed === runner.submit.total);
+  const assistantPane = (
+    <AssistantPane
+      chat={chat}
+      disabled={readOnly}
+      onSend={send}
+      onDismissError={dismissError}
+      onFinish={readOnly ? undefined : () => setFinishOpen(true)}
+      closedNotice={readOnly ? <ClosedNotice status={attempt.status} grade={grade} /> : undefined}
+    />
+  );
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
+      <FinishDialog
+        open={finishOpen}
+        passedAll={passedAll}
+        attemptId={attempt.id}
+        onClose={() => setFinishOpen(false)}
+        onFinished={() => {
+          setFinishOpen(false);
+          router.refresh();
+        }}
+      />
       {toast && (
         <div
           key={toast.id}
