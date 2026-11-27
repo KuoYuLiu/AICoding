@@ -1,0 +1,6 @@
+{
+  "slug": "sum-to-n",
+  "title": "從 1 加到 n",
+  "languageId": "python-3",
+  "variationHint": "只加總 1 到 n 之間的偶數"
+}
